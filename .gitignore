@@ -1,0 +1,27 @@
+# IDE / editor
+.claude/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# Secrets & local setup (.env, credentials, local-only scripts)
+setup_files/
+
+# Upstream zip drops (live on the `upstream` branch, not main)
+app_updates_*/
+tiger_version/
+
+# Backup snapshots
+*_backup_*/
+
+# Runtime data (in case env vars ever point inside the project)
+*.sqlite
+*.sqlite-journal

@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  comfy-png-viewer:
+    build: .
+    image: comfy-png-viewer:latest
+    container_name: comfy-png-viewer
+    env_file:
+      - /volume1/docker/comfy-png-viewer-cache/.env
+    ports:
+      - "${HOST_PORT:-8088}:8080"
+    environment:
+      BROWSE_ROOT: "/data/output"
+      SHOW_HIDDEN: "0"
+      THUMB_CACHE_DIR: "/cache/thumbs"
+      APP_LOG_PATH: "/cache/viewer.log"
+      THUMB_READY_STATE_PATH: "/cache/thumb-ready-state.json"
+      REBUILD_STATUS_PATH: "/cache/rebuild-status.json"
+      METADATA_DB_PATH: "/cache/metadata-index.sqlite"
+      METADATA_INDEX_STATUS_PATH: "/cache/metadata-index-status.json"
+      AI_ANALYSIS_STATUS_PATH: "/cache/ai-analysis-status.json"
+    volumes:
+      - /volume1/photo/PhotoLibrary:/data/output
+      - /volume1/docker/comfy-png-viewer-cache:/cache
+    tmpfs:
+      - /tmp
+    restart: unless-stopped
