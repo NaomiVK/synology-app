@@ -25,3 +25,6 @@ tiger_version/
 # Runtime data (in case env vars ever point inside the project)
 *.sqlite
 *.sqlite-journal
+
+# Local helper scripts (not for distribution)
+merge_upstream.sh
