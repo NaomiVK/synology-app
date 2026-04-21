@@ -1,0 +1,222 @@
+{% if current_dir_rel and not is_virtual_dir and not folders %}
+  <section class="browser-section parent-nav-section">
+    <a class="list-row nav parent-nav-row"
+       href="{{ url_for('index', dir=parent_rel, view=view_mode, sort=sort_key, order=sort_dir) }}"
+       data-folder-link="true"
+       data-nav-scope="folders"
+       data-dir="{{ parent_rel }}">
+      <span class="icon" aria-hidden="true">
+        <svg class="parent-nav-icon" viewBox="0 0 24 24">
+          <path d="M3.5 7.5h5.2l1.8 2h10v8.8a1.2 1.2 0 0 1-1.2 1.2H4.7a1.2 1.2 0 0 1-1.2-1.2z"></path>
+          <path d="M10.8 14.5 7.8 11.5l3-3"></path>
+          <path d="M8.2 11.5h7"></path>
+        </svg>
+      </span>
+      <span>Parent folder</span>
+    </a>
+  </section>
+{% endif %}
+
+{% if folders %}
+  {% set collapsible_folders = current_dir_rel and folders %}
+  <section class="browser-section folder-list-section{% if collapsible_folders %} folder-list-section-collapsible{% endif %}">
+    {% if collapsible_folders %}
+      <details class="folder-section-disclosure">
+        <summary class="browser-subhead browser-subhead-bar browser-subhead-toggle">
+          <span class="browser-subhead-label">
+            <svg class="browser-subhead-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3.5 7.5h5.2l1.8 2h10v8.8a1.2 1.2 0 0 1-1.2 1.2H4.7a1.2 1.2 0 0 1-1.2-1.2z"></path>
+            </svg>
+            <span class="browser-subhead-text">Folders</span>
+          </span>
+          <span class="browser-subhead-side">
+            <span class="browser-subhead-count">{{ folders|length }}</span>
+          </span>
+        </summary>
+        <div class="folder-section-body{% if view_mode == 'thumbs-full' %} folder-thumb-grid{% endif %}">
+          {% for item in folders %}
+            {% if view_mode == 'thumbs-full' %}
+              <a class="folder-thumb-card"
+                 href="{{ url_for('index', dir=item.rel_path, view=view_mode, sort=sort_key, order=sort_dir) }}"
+                 data-folder-link="true"
+                 data-nav-scope="gallery"
+                 data-dir="{{ item.rel_path }}"
+                 title="{{ item.name }}">
+                <span class="folder-thumb-image" aria-hidden="true">
+                  {% if item.cover %}
+                    <img loading="{% if loop.index0 < 4 %}eager{% else %}lazy{% endif %}"
+                         {% if loop.index0 < 2 %}fetchpriority="high"{% endif %}
+                         src="{{ url_for('image_thumbnail', file=item.cover.rel_path, mode='full', v=item.cover.thumb_sig) }}"
+                         alt="">
+                  {% else %}
+                    {% if item.type == 'favorites' %}
+                      <svg class="folder-thumb-placeholder favorites-folder-icon" viewBox="0 0 24 24">
+                        <path d="m12 4.2 2.3 4.7 5.2.8-3.8 3.7.9 5.1L12 16l-4.6 2.5.9-5.1-3.8-3.7 5.2-.8z"></path>
+                      </svg>
+                    {% elif item.type == 'edits' %}
+                      <svg class="folder-thumb-placeholder edits-folder-icon" viewBox="0 0 24 24">
+                        <path d="M4.5 19.5h4.2L19 9.2l-4.2-4.2L4.5 15.3z"></path>
+                        <path d="m12.8 7 4.2 4.2"></path>
+                      </svg>
+                    {% else %}
+                      <svg class="folder-thumb-placeholder" viewBox="0 0 24 24">
+                        <path d="M3.5 7.5h5.2l1.8 2h10v8.8a1.2 1.2 0 0 1-1.2 1.2H4.7a1.2 1.2 0 0 1-1.2-1.2z"></path>
+                      </svg>
+                    {% endif %}
+                  {% endif %}
+                </span>
+                <span class="folder-thumb-name">{{ item.name }}</span>
+              </a>
+            {% else %}
+              <a class="list-row dir-row"
+                 href="{{ url_for('index', dir=item.rel_path, view=view_mode, sort=sort_key, order=sort_dir) }}"
+                 data-folder-link="true"
+                 data-nav-scope="gallery"
+                 data-dir="{{ item.rel_path }}">
+                <span class="icon" aria-hidden="true">
+                  {% if item.type == 'favorites' %}
+                    <svg class="folder-row-icon favorites-folder-icon" viewBox="0 0 24 24">
+                      <path d="m12 4.2 2.3 4.7 5.2.8-3.8 3.7.9 5.1L12 16l-4.6 2.5.9-5.1-3.8-3.7 5.2-.8z"></path>
+                    </svg>
+                  {% elif item.type == 'edits' %}
+                    <svg class="folder-row-icon edits-folder-icon" viewBox="0 0 24 24">
+                      <path d="M4.5 19.5h4.2L19 9.2l-4.2-4.2L4.5 15.3z"></path>
+                      <path d="m12.8 7 4.2 4.2"></path>
+                    </svg>
+                  {% else %}
+                    <svg class="folder-row-icon" viewBox="0 0 24 24">
+                      <path d="M3.5 7.5h5.2l1.8 2h10v8.8a1.2 1.2 0 0 1-1.2 1.2H4.7a1.2 1.2 0 0 1-1.2-1.2z"></path>
+                    </svg>
+                  {% endif %}
+                </span>
+                <span class="name">{{ item.name }}</span>
+              </a>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </details>
+    {% else %}
+      <div class="browser-subhead browser-subhead-bar">
+        <span class="browser-subhead-label">
+          <svg class="browser-subhead-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3.5 7.5h5.2l1.8 2h10v8.8a1.2 1.2 0 0 1-1.2 1.2H4.7a1.2 1.2 0 0 1-1.2-1.2z"></path>
+          </svg>
+          <span class="browser-subhead-text">Folders</span>
+        </span>
+        <span class="browser-subhead-side">
+          <span class="browser-subhead-count">{{ folders|length }}</span>
+        </span>
+      </div>
+      <div class="folder-section-body{% if view_mode == 'thumbs-full' %} folder-thumb-grid{% endif %}">
+        {% for item in folders %}
+          {% if view_mode == 'thumbs-full' %}
+            <a class="folder-thumb-card"
+               href="{{ url_for('index', dir=item.rel_path, view=view_mode, sort=sort_key, order=sort_dir) }}"
+               data-folder-link="true"
+               data-nav-scope="gallery"
+               data-dir="{{ item.rel_path }}"
+               title="{{ item.name }}">
+              <span class="folder-thumb-image" aria-hidden="true">
+                {% if item.cover %}
+                  <img loading="{% if loop.index0 < 4 %}eager{% else %}lazy{% endif %}"
+                       {% if loop.index0 < 2 %}fetchpriority="high"{% endif %}
+                       src="{{ url_for('image_thumbnail', file=item.cover.rel_path, mode='full', v=item.cover.thumb_sig) }}"
+                       alt="">
+                {% else %}
+                  {% if item.type == 'favorites' %}
+                    <svg class="folder-thumb-placeholder favorites-folder-icon" viewBox="0 0 24 24">
+                      <path d="m12 4.2 2.3 4.7 5.2.8-3.8 3.7.9 5.1L12 16l-4.6 2.5.9-5.1-3.8-3.7 5.2-.8z"></path>
+                    </svg>
+                  {% elif item.type == 'edits' %}
+                    <svg class="folder-thumb-placeholder edits-folder-icon" viewBox="0 0 24 24">
+                      <path d="M4.5 19.5h4.2L19 9.2l-4.2-4.2L4.5 15.3z"></path>
+                      <path d="m12.8 7 4.2 4.2"></path>
+                    </svg>
+                  {% else %}
+                    <svg class="folder-thumb-placeholder" viewBox="0 0 24 24">
+                      <path d="M3.5 7.5h5.2l1.8 2h10v8.8a1.2 1.2 0 0 1-1.2 1.2H4.7a1.2 1.2 0 0 1-1.2-1.2z"></path>
+                    </svg>
+                  {% endif %}
+                {% endif %}
+              </span>
+              <span class="folder-thumb-name">{{ item.name }}</span>
+            </a>
+          {% else %}
+            <a class="list-row dir-row"
+               href="{{ url_for('index', dir=item.rel_path, view=view_mode, sort=sort_key, order=sort_dir) }}"
+               data-folder-link="true"
+               data-nav-scope="gallery"
+               data-dir="{{ item.rel_path }}">
+              <span class="icon" aria-hidden="true">
+                {% if item.type == 'favorites' %}
+                  <svg class="folder-row-icon favorites-folder-icon" viewBox="0 0 24 24">
+                    <path d="m12 4.2 2.3 4.7 5.2.8-3.8 3.7.9 5.1L12 16l-4.6 2.5.9-5.1-3.8-3.7 5.2-.8z"></path>
+                  </svg>
+                {% elif item.type == 'edits' %}
+                  <svg class="folder-row-icon edits-folder-icon" viewBox="0 0 24 24">
+                    <path d="M4.5 19.5h4.2L19 9.2l-4.2-4.2L4.5 15.3z"></path>
+                    <path d="m12.8 7 4.2 4.2"></path>
+                  </svg>
+                {% else %}
+                  <svg class="folder-row-icon" viewBox="0 0 24 24">
+                    <path d="M3.5 7.5h5.2l1.8 2h10v8.8a1.2 1.2 0 0 1-1.2 1.2H4.7a1.2 1.2 0 0 1-1.2-1.2z"></path>
+                  </svg>
+                {% endif %}
+              </span>
+              <span class="name">{{ item.name }}</span>
+            </a>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+  </section>
+{% endif %}
+
+<section class="browser-section image-list-section">
+  <div class="browser-subhead browser-subhead-bar">
+    <span class="browser-subhead-label">
+      <svg class="browser-subhead-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="4.5" y="5.5" width="15" height="13" rx="0"></rect>
+        <path d="m6.8 15.2 3.2-3.6 2.6 2.7 2.7-3.2 2 4.1"></path>
+        <circle cx="9" cy="9.2" r="1.1" fill="currentColor" stroke="none"></circle>
+      </svg>
+      <span id="browser-image-subhead-text" class="browser-subhead-text">PNGs</span>
+    </span>
+    <span class="browser-subhead-side">
+      <span id="browser-image-subhead-count" class="browser-subhead-count">{{ png_items|length }}</span>
+    </span>
+  </div>
+  <div id="gallery-search-status" class="gallery-search-status" hidden></div>
+  <div id="browser-image-list" class="browser-image-list {% if view_mode == 'thumbs-full' %}thumbs-mode full-thumbs-mode{% endif %}">
+    {% for item in png_items %}
+      {% if view_mode == 'thumbs-full' %}
+        <a class="thumb-card{% if item.image_edit and item.image_edit.has_edit %} has-edited-variant{% endif %}"
+           href="{{ url_for('index', dir=current_dir_rel, view=view_mode, sort=sort_key, order=sort_dir, file=item.rel_path) }}"
+           data-file="{{ item.rel_path }}"
+           {% if item.aspect_ratio %}data-aspect="{{ '%.6f'|format(item.aspect_ratio) }}"{% endif %}
+           title="{{ item.name }}">
+          <div class="thumb-image">
+            {% set full_thumb_url = url_for('image_thumbnail', file=item.rel_path, mode='full', v=item.thumb_sig) %}
+            <img loading="{% if loop.index0 < 6 %}eager{% else %}lazy{% endif %}"
+                 {% if loop.index0 < 2 %}fetchpriority="high"{% endif %}
+                 src="{{ full_thumb_url }}"
+                 {% if item.width and item.height %}width="{{ item.width }}" height="{{ item.height }}"{% endif %}
+                 alt="{{ item.name }}">
+          </div>
+        </a>
+      {% else %}
+        <a class="list-row"
+           href="{{ url_for('index', dir=current_dir_rel, view=view_mode, sort=sort_key, order=sort_dir, file=item.rel_path) }}"
+           data-file="{{ item.rel_path }}">
+          <span class="icon">🖼</span>
+          <span class="name">{{ item.name }}</span>
+        </a>
+      {% endif %}
+    {% endfor %}
+  </div>
+  <div id="gallery-search-sentinel" class="gallery-search-sentinel" hidden></div>
+</section>
+
+{% if not folders and not png_items %}
+  <div class="empty">No folders or PNG files in this directory.</div>
+{% endif %}

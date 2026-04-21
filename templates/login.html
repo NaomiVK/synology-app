@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Login | {{ app_title }}</title>
+    <link rel="icon" href="{{ url_for('favicon') }}">
+    <script>
+      window.__themeConfig = {
+        storage: {
+          theme: "uiTheme",
+          accentPrefix: "uiAccent:",
+          familyPrefix: "uiAccentFamily:",
+          motionPrefix: "uiAccentMotion:",
+          customPrefix: "uiCustomAccent:"
+        },
+        families: [
+          { id: "core", label: "Classic" },
+          { id: "neon", label: "Neon" },
+          { id: "pastel", label: "Pastel" },
+          { id: "mono", label: "Mono" }
+        ],
+        presets: [
+          { id: "default", label: "Default", accent: null, accent2: null, behavior: "balanced", family: "core" },
+          { id: "amber", label: "Amber", accent: "#a87418", accent2: "#486a8a", behavior: "wash", family: "core" },
+          { id: "rust", label: "Rust", accent: "#a24a2f", accent2: "#8da85f", behavior: "border", family: "core" },
+          { id: "canon", label: "Canon", accent: "#b5121b", accent2: "#51606c", behavior: "border", family: "core" },
+          { id: "rosewood", label: "Rosewood", accent: "#9e5466", accent2: "#78967b", behavior: "type", family: "core" },
+          { id: "ice", label: "Ice", accent: "#6aaec0", accent2: "#d4a766", behavior: "glass", family: "core" },
+          { id: "cosmic", label: "Cosmic", accent: "#ff7a1a", accent2: "#4f6d8f", behavior: "type", family: "core" },
+          { id: "reactor", label: "Reactor", accent: "#00f7ff", accent2: "#ff2bd6", behavior: "glass", family: "neon" },
+          { id: "gridline", label: "Gridline", accent: "#6d5cff", accent2: "#00e5ff", behavior: "border", family: "neon" },
+          { id: "afterglow", label: "Afterglow", accent: "#ff4fd8", accent2: "#ffe45e", behavior: "glass", family: "neon" },
+          { id: "volt", label: "Volt", accent: "#39ff14", accent2: "#ff6ec7", behavior: "border", family: "neon" },
+          { id: "chalk", label: "Chalk", accent: "#98abf7", accent2: "#e9b8d0", behavior: "wash", family: "pastel" },
+          { id: "petal", label: "Petal", accent: "#df9db5", accent2: "#b8d7a0", behavior: "wash", family: "pastel" },
+          { id: "mintwash", label: "Mintwash", accent: "#88cfbc", accent2: "#efc38c", behavior: "wash", family: "pastel" },
+          { id: "lilac", label: "Lilac", accent: "#b8a6e6", accent2: "#f0c7a1", behavior: "wash", family: "pastel" },
+          { id: "graphite", label: "Graphite", accent: "#8d99a3", accent2: "#d6dde4", behavior: "border", family: "mono" },
+          { id: "bone", label: "Bone", accent: "#cec5b4", accent2: "#8e8678", behavior: "type", family: "mono" },
+          { id: "slate", label: "Slate", accent: "#6f7c8a", accent2: "#b4a79a", behavior: "border", family: "mono" },
+          { id: "nickel", label: "Nickel", accent: "#8f979d", accent2: "#c6b27a", behavior: "type", family: "mono" }
+        ],
+        defaults: {
+          light: { accent: "#155e63", accent2: "#cb7a2a" },
+          dark: { accent: "#68c0c6", accent2: "#e0a25d" }
+        }
+      };
+    </script>
+    <script>
+      (function () {
+        var themeConfig = window.__themeConfig || {};
+        var storage = themeConfig.storage || {};
+        var themeStorageKey = storage.theme || "uiTheme";
+        var accentStoragePrefix = storage.accentPrefix || "uiAccent:";
+        var motionStoragePrefix = storage.motionPrefix || "uiAccentMotion:";
+        var customAccentStoragePrefix = storage.customPrefix || "uiCustomAccent:";
+        var presetList = themeConfig.presets || [];
+        var accentPresets = {};
+        var defaultAccentByTheme = themeConfig.defaults || {};
+        for (var i = 0; i < presetList.length; i++) {
+          accentPresets[presetList[i].id] = presetList[i];
+        }
+        function readStoredCustomAccent(theme) {
+          var nextTheme = theme === "dark" ? "dark" : "light";
+          try {
+            var raw = localStorage.getItem(customAccentStoragePrefix + nextTheme);
+            if (!raw) return null;
+            var parsed = JSON.parse(raw);
+            if (!parsed || typeof parsed !== "object") return null;
+            if (typeof parsed.accent !== "string" || typeof parsed.accent2 !== "string") return null;
+            return {
+              id: "custom",
+              label: "Custom",
+              accent: parsed.accent,
+              accent2: parsed.accent2,
+              behavior: "balanced",
+              family: "core",
+              palette: "full"
+            };
+          } catch (_err) {
+            return null;
+          }
+        }
+
+        function getResolvedPreset(theme, accentId) {
+          if (accentId === "custom") {
+            return readStoredCustomAccent(theme) || accentPresets["default"];
+          }
+          return accentPresets[accentId] || accentPresets["default"];
+        }
+        var storedTheme = null;
+        try {
+          storedTheme = localStorage.getItem(themeStorageKey);
+        } catch (_err) {
+          storedTheme = null;
+        }
+
+        var nextTheme = storedTheme === "light" || storedTheme === "dark"
+          ? storedTheme
+          : ((window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light");
+
+        document.documentElement.setAttribute("data-theme", nextTheme);
+
+        try {
+          var storedAccent = localStorage.getItem(accentStoragePrefix + nextTheme) || "default";
+          var preset = getResolvedPreset(nextTheme, storedAccent);
+          var defaults = defaultAccentByTheme[nextTheme];
+          document.documentElement.style.setProperty("--accent", preset.accent || defaults.accent);
+          document.documentElement.style.setProperty("--accent-2", preset.accent2 || defaults.accent2);
+          document.documentElement.setAttribute("data-accent-behavior", preset.behavior || "balanced");
+          document.documentElement.setAttribute("data-accent-id", storedAccent);
+          document.documentElement.setAttribute("data-accent-family", preset.family || "core");
+          var storedMotion = localStorage.getItem(motionStoragePrefix + nextTheme) || "none";
+          document.documentElement.setAttribute("data-accent-motion", (storedMotion === "breathe" || storedMotion === "glow") ? "breathe" : "none");
+        } catch (_err2) {
+          var defaults = defaultAccentByTheme[nextTheme];
+          document.documentElement.style.setProperty("--accent", defaults.accent);
+          document.documentElement.style.setProperty("--accent-2", defaults.accent2);
+          document.documentElement.setAttribute("data-accent-behavior", "balanced");
+          document.documentElement.setAttribute("data-accent-id", "default");
+          document.documentElement.setAttribute("data-accent-family", "core");
+          document.documentElement.setAttribute("data-accent-motion", "none");
+        }
+      })();
+    </script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  </head>
+  <body class="login-body">
+    <main class="login-shell">
+      <section class="login-card" aria-labelledby="login-title">
+        <div class="login-brand">
+          <svg class="login-mark" viewBox="0 0 64 64" aria-hidden="true">
+            <path fill="currentColor" d="M32 55 23 41.5 10.5 34l6-6 1-18.5L32 23l14.5-13.5 1 18.5 6 6-12.5 7.5-5.5 9h-7z"></path>
+            <path fill="var(--panel)" d="M23.5 34.5 28.8 31.8 26.2 36.2 20.8 38.6z"></path>
+            <path fill="var(--panel)" d="M40.5 34.5 43.2 38.6 37.8 36.2 35.2 31.8z"></path>
+          </svg>
+          <div class="login-brand-copy">
+            <p class="login-kicker">Private Viewer</p>
+            <h1 id="login-title">{{ app_title }}</h1>
+            <p class="login-subtitle">Enter the shared password to continue.</p>
+          </div>
+        </div>
+
+        {% if error %}
+          <div class="alert login-alert">{{ error }}</div>
+        {% endif %}
+
+        <form method="post" class="login-form">
+          <input type="hidden" name="next" value="{{ next_url }}">
+          <input type="text" name="username" value="tigerminx" autocomplete="username" class="login-hidden-credential" tabindex="-1" aria-hidden="true" readonly>
+          <label class="login-label" for="password">Password</label>
+          <input id="password" class="login-input" type="password" name="password" autocomplete="current-password" required autofocus>
+
+          <label class="login-check">
+            <input type="checkbox" name="remember_me" value="1">
+            <span>Remember this device for {{ remember_me_days }} days</span>
+          </label>
+
+          <button type="submit" class="login-submit">Sign In</button>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>

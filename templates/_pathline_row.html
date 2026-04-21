@@ -1,0 +1,109 @@
+{% if current_dir_rel and not is_virtual_dir %}
+  <div class="pathline-shell">
+    <a class="path-home-btn"
+       href="{{ url_for('index', dir='', view=view_mode, sort=sort_key, order=sort_dir) }}"
+       data-folder-link="true"
+       data-nav-scope="folders"
+       data-dir=""
+       title="Go to root"
+       aria-label="Go to root">
+      <svg class="path-home-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 10.3 12 4.8l7 5.5"></path>
+        <path d="M7.3 9.6v9h9.4v-9"></path>
+        <path d="M10.2 18.6v-5.6h3.6v5.6"></path>
+      </svg>
+    </a>
+    <div class="pathline">
+    {% for crumb in breadcrumb[1:] %}
+      {% if loop.last %}
+        <span class="pathline-current">{{ crumb.name }}</span>
+      {% else %}
+        <a href="{{ url_for('index', dir=crumb.rel_path, view=view_mode, sort=sort_key, order=sort_dir) }}"
+           data-folder-link="true"
+           data-nav-scope="folders"
+           data-dir="{{ crumb.rel_path }}">{{ crumb.name }}</a> <span>/</span>
+      {% endif %}
+    {% endfor %}
+    </div>
+  </div>
+{% elif is_virtual_dir %}
+  <div class="pathline-shell">
+    <a class="path-home-btn"
+       href="{{ url_for('index', dir='', view=view_mode, sort=sort_key, order=sort_dir) }}"
+       data-folder-link="true"
+       data-nav-scope="folders"
+       data-dir=""
+       title="Go to root"
+       aria-label="Go to root">
+      <svg class="path-home-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 10.3 12 4.8l7 5.5"></path>
+        <path d="M7.3 9.6v9h9.4v-9"></path>
+        <path d="M10.2 18.6v-5.6h3.6v5.6"></path>
+      </svg>
+    </a>
+    <div class="pathline">
+    {% for crumb in breadcrumb[1:] %}
+      {% if loop.last %}
+        <span class="pathline-current">{{ crumb.name }}</span>
+      {% else %}
+        <a href="{{ url_for('index', dir=crumb.rel_path, view=view_mode, sort=sort_key, order=sort_dir) }}"
+           data-folder-link="true"
+           data-nav-scope="folders"
+           data-dir="{{ crumb.rel_path }}">{{ crumb.name }}</a> <span>/</span>
+      {% endif %}
+    {% endfor %}
+    </div>
+  </div>
+{% endif %}
+{% if current_dir_rel and not is_virtual_dir %}
+  <div class="pathline-nav" aria-label="Sibling folder navigation">
+    {% if prev_folder %}
+      <a class="path-nav-btn"
+         data-path-nav="prev"
+         href="{{ url_for('index', dir=prev_folder.rel_path, view=view_mode, sort=sort_key, order=sort_dir) }}"
+         data-folder-link="true"
+         data-nav-scope="gallery"
+         data-dir="{{ prev_folder.rel_path }}"
+         title="Previous folder: {{ prev_folder.name }}"
+         aria-label="Previous folder: {{ prev_folder.name }}">
+        <svg class="path-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3.5 7.5h5.2l1.8 2h10v8.8a1.2 1.2 0 0 1-1.2 1.2H4.7a1.2 1.2 0 0 1-1.2-1.2z"></path>
+          <path d="M16.5 15.5v-6"></path>
+          <path d="M13.8 12.2 16.5 9.5l2.7 2.7"></path>
+        </svg>
+      </a>
+    {% else %}
+      <span class="path-nav-btn is-disabled" aria-hidden="true">
+        <svg class="path-nav-icon" viewBox="0 0 24 24">
+          <path d="M3.5 7.5h5.2l1.8 2h10v8.8a1.2 1.2 0 0 1-1.2 1.2H4.7a1.2 1.2 0 0 1-1.2-1.2z"></path>
+          <path d="M16.5 15.5v-6"></path>
+          <path d="M13.8 12.2 16.5 9.5l2.7 2.7"></path>
+        </svg>
+      </span>
+    {% endif %}
+    {% if next_folder %}
+      <a class="path-nav-btn"
+         data-path-nav="next"
+         href="{{ url_for('index', dir=next_folder.rel_path, view=view_mode, sort=sort_key, order=sort_dir) }}"
+         data-folder-link="true"
+         data-nav-scope="gallery"
+         data-dir="{{ next_folder.rel_path }}"
+         title="Next folder: {{ next_folder.name }}"
+         aria-label="Next folder: {{ next_folder.name }}">
+        <svg class="path-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3.5 7.5h5.2l1.8 2h10v8.8a1.2 1.2 0 0 1-1.2 1.2H4.7a1.2 1.2 0 0 1-1.2-1.2z"></path>
+          <path d="M16.5 9.5v6"></path>
+          <path d="m13.8 12.8 2.7 2.7 2.7-2.7"></path>
+        </svg>
+      </a>
+    {% else %}
+      <span class="path-nav-btn is-disabled" aria-hidden="true">
+        <svg class="path-nav-icon" viewBox="0 0 24 24">
+          <path d="M3.5 7.5h5.2l1.8 2h10v8.8a1.2 1.2 0 0 1-1.2 1.2H4.7a1.2 1.2 0 0 1-1.2-1.2z"></path>
+          <path d="M16.5 9.5v6"></path>
+          <path d="m13.8 12.8 2.7 2.7 2.7-2.7"></path>
+        </svg>
+      </span>
+    {% endif %}
+  </div>
+{% endif %}
