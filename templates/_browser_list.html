@@ -36,18 +36,28 @@
         <div class="folder-section-body{% if view_mode == 'thumbs-full' %} folder-thumb-grid{% endif %}">
           {% for item in folders %}
             {% if view_mode == 'thumbs-full' %}
-              <a class="folder-thumb-card"
+              <a class="folder-thumb-card{% if item.type in ['favorites', 'edits'] %} virtual-folder-thumb-card{% endif %}"
                  href="{{ url_for('index', dir=item.rel_path, view=view_mode, sort=sort_key, order=sort_dir) }}"
                  data-folder-link="true"
                  data-nav-scope="gallery"
                  data-dir="{{ item.rel_path }}"
                  title="{{ item.name }}">
-                <span class="folder-thumb-image" aria-hidden="true">
+                <span class="folder-thumb-image{% if item.type in ['favorites', 'edits'] %} virtual-folder-thumb-image{% endif %}" aria-hidden="true">
                   {% if item.cover %}
                     <img loading="{% if loop.index0 < 4 %}eager{% else %}lazy{% endif %}"
                          {% if loop.index0 < 2 %}fetchpriority="high"{% endif %}
                          src="{{ url_for('image_thumbnail', file=item.cover.rel_path, mode='full', v=item.cover.thumb_sig) }}"
                          alt="">
+                    {% if item.type == 'favorites' %}
+                      <svg class="folder-thumb-placeholder virtual-folder-overlay-icon favorites-folder-icon" viewBox="0 0 24 24">
+                        <path d="m12 4.2 2.3 4.7 5.2.8-3.8 3.7.9 5.1L12 16l-4.6 2.5.9-5.1-3.8-3.7 5.2-.8z"></path>
+                      </svg>
+                    {% elif item.type == 'edits' %}
+                      <svg class="folder-thumb-placeholder virtual-folder-overlay-icon edits-folder-icon" viewBox="0 0 24 24">
+                        <path d="M4.5 19.5h4.2L19 9.2l-4.2-4.2L4.5 15.3z"></path>
+                        <path d="m12.8 7 4.2 4.2"></path>
+                      </svg>
+                    {% endif %}
                   {% else %}
                     {% if item.type == 'favorites' %}
                       <svg class="folder-thumb-placeholder favorites-folder-icon" viewBox="0 0 24 24">
@@ -110,18 +120,28 @@
       <div class="folder-section-body{% if view_mode == 'thumbs-full' %} folder-thumb-grid{% endif %}">
         {% for item in folders %}
           {% if view_mode == 'thumbs-full' %}
-            <a class="folder-thumb-card"
+            <a class="folder-thumb-card{% if item.type in ['favorites', 'edits'] %} virtual-folder-thumb-card{% endif %}"
                href="{{ url_for('index', dir=item.rel_path, view=view_mode, sort=sort_key, order=sort_dir) }}"
                data-folder-link="true"
                data-nav-scope="gallery"
                data-dir="{{ item.rel_path }}"
                title="{{ item.name }}">
-              <span class="folder-thumb-image" aria-hidden="true">
+              <span class="folder-thumb-image{% if item.type in ['favorites', 'edits'] %} virtual-folder-thumb-image{% endif %}" aria-hidden="true">
                 {% if item.cover %}
                   <img loading="{% if loop.index0 < 4 %}eager{% else %}lazy{% endif %}"
                        {% if loop.index0 < 2 %}fetchpriority="high"{% endif %}
                        src="{{ url_for('image_thumbnail', file=item.cover.rel_path, mode='full', v=item.cover.thumb_sig) }}"
                        alt="">
+                  {% if item.type == 'favorites' %}
+                    <svg class="folder-thumb-placeholder virtual-folder-overlay-icon favorites-folder-icon" viewBox="0 0 24 24">
+                      <path d="m12 4.2 2.3 4.7 5.2.8-3.8 3.7.9 5.1L12 16l-4.6 2.5.9-5.1-3.8-3.7 5.2-.8z"></path>
+                    </svg>
+                  {% elif item.type == 'edits' %}
+                    <svg class="folder-thumb-placeholder virtual-folder-overlay-icon edits-folder-icon" viewBox="0 0 24 24">
+                      <path d="M4.5 19.5h4.2L19 9.2l-4.2-4.2L4.5 15.3z"></path>
+                      <path d="m12.8 7 4.2 4.2"></path>
+                    </svg>
+                  {% endif %}
                 {% else %}
                   {% if item.type == 'favorites' %}
                     <svg class="folder-thumb-placeholder favorites-folder-icon" viewBox="0 0 24 24">

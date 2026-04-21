@@ -2243,6 +2243,23 @@ body.app-ready .browser-image-list > *:nth-child(n+11) { animation-delay: 340ms;
   object-fit: cover;
 }
 
+.virtual-folder-thumb-image {
+  position: relative;
+}
+
+.virtual-folder-thumb-image img {
+  opacity: 0.56;
+  filter: saturate(0.82) brightness(0.78);
+}
+
+.virtual-folder-overlay-icon {
+  position: absolute;
+  inset: auto;
+  z-index: 1;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.56));
+}
+
 .folder-thumb-placeholder {
   width: 36px;
   height: 36px;
@@ -2252,6 +2269,11 @@ body.app-ready .browser-image-list > *:nth-child(n+11) { animation-delay: 340ms;
   stroke-linecap: round;
   stroke-linejoin: round;
   fill: none;
+}
+
+.folder-thumb-placeholder.virtual-folder-overlay-icon {
+  width: clamp(42px, 18%, 68px);
+  height: clamp(42px, 18%, 68px);
 }
 
 .folder-thumb-name {
