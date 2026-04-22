@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Urbanist:wght@400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Urbanist:wght@400&display=swap");
 
 :root {
   --bg: #f3efe7;
@@ -21,6 +21,7 @@
   --font-display: "Urbanist", "IBM Plex Sans", "Segoe UI", sans-serif;
   --font-ui: "IBM Plex Sans", "Segoe UI", sans-serif;
   --font-label: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --font-folder-title: "Kalam", "Segoe Print", "Bradley Hand ITC", cursive;
   --label-tracking: 0.08em;
   --title-tracking: 0.01em;
   --panel-accent-tint: 3%;
@@ -2189,6 +2190,8 @@ body.app-ready .browser-image-list > *:nth-child(n+11) { animation-delay: 340ms;
 .folder-thumb-grid {
   --folder-card-min: 220px;
   --folder-card-max-height: 380px;
+  --folder-cover-hover-scale: 1.032;
+  --folder-title-hover-scale: 1.14;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(var(--folder-card-min), 100%), 1fr));
   gap: 12px;
@@ -2201,14 +2204,13 @@ body.app-ready .browser-image-list > *:nth-child(n+11) { animation-delay: 340ms;
   padding: 3px;
   color: inherit;
   text-decoration: none;
-  transition: transform var(--ui-duration-fast) var(--ui-ease-standard), background var(--ui-duration-fast) ease, box-shadow var(--ui-duration-fast) ease;
+  position: relative;
+  isolation: isolate;
+  transition: background var(--ui-duration-fast) ease;
 }
 
 .folder-thumb-grid[data-gallery-density] .folder-thumb-card {
-  transition:
-    transform var(--ui-duration-fast) var(--ui-ease-standard),
-    background var(--ui-duration-fast) ease,
-    box-shadow var(--ui-duration-fast) ease;
+  transition: background var(--ui-duration-fast) ease;
 }
 
 .folder-thumb-grid[data-gallery-density] {
@@ -2219,11 +2221,6 @@ body.app-ready .browser-image-list > *:nth-child(n+11) { animation-delay: 340ms;
   max-height: none;
 }
 
-.folder-thumb-card:hover {
-  background: color-mix(in srgb, var(--accent) 9%, transparent);
-  transform: translateY(-2px);
-}
-
 .folder-thumb-image {
   display: flex;
   align-items: center;
@@ -2231,9 +2228,19 @@ body.app-ready .browser-image-list > *:nth-child(n+11) { animation-delay: 340ms;
   aspect-ratio: 3 / 4;
   max-height: var(--folder-card-max-height);
   overflow: hidden;
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  border: 3px solid color-mix(in srgb, var(--accent) 10%, transparent);
   background:
     linear-gradient(180deg, var(--thumb-well-bg-top), var(--thumb-well-bg-bottom)),
     var(--thumb-well-bg);
+  transform: translate3d(0, 0, 0) scale(1);
+  transform-origin: center;
+  will-change: transform;
+  transition:
+    transform var(--ui-duration-fast) var(--ui-ease-standard),
+    border-color var(--ui-duration-fast) ease;
 }
 
 .folder-thumb-image img {
@@ -2278,12 +2285,31 @@ body.app-ready .browser-image-list > *:nth-child(n+11) { animation-delay: 340ms;
 
 .folder-thumb-name {
   display: block;
-  margin-top: 7px;
+  margin-top: 12px;
   color: var(--accent-2);
-  font-family: var(--font-label);
-  font-size: 0.92rem;
-  line-height: 1.2;
+  font-family: var(--font-folder-title);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.12;
+  letter-spacing: 0;
+  text-align: center;
   overflow-wrap: anywhere;
+  position: relative;
+  z-index: 2;
+  transform-origin: center;
+  will-change: transform;
+  transition: transform 130ms linear;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .folder-thumb-card:hover .folder-thumb-image {
+    transform: translate3d(0, 0, 0) scale(var(--folder-cover-hover-scale));
+    border-color: var(--accent);
+  }
+
+  .folder-thumb-card:hover .folder-thumb-name {
+    transform: scale(var(--folder-title-hover-scale));
+  }
 }
 
 .folder-section-disclosure {

@@ -40,8 +40,7 @@
                  href="{{ url_for('index', dir=item.rel_path, view=view_mode, sort=sort_key, order=sort_dir) }}"
                  data-folder-link="true"
                  data-nav-scope="gallery"
-                 data-dir="{{ item.rel_path }}"
-                 title="{{ item.name }}">
+                 data-dir="{{ item.rel_path }}">
                 <span class="folder-thumb-image{% if item.type in ['favorites', 'edits'] %} virtual-folder-thumb-image{% endif %}" aria-hidden="true">
                   {% if item.cover %}
                     <img loading="{% if loop.index0 < 4 %}eager{% else %}lazy{% endif %}"
@@ -124,8 +123,7 @@
                href="{{ url_for('index', dir=item.rel_path, view=view_mode, sort=sort_key, order=sort_dir) }}"
                data-folder-link="true"
                data-nav-scope="gallery"
-               data-dir="{{ item.rel_path }}"
-               title="{{ item.name }}">
+               data-dir="{{ item.rel_path }}">
               <span class="folder-thumb-image{% if item.type in ['favorites', 'edits'] %} virtual-folder-thumb-image{% endif %}" aria-hidden="true">
                 {% if item.cover %}
                   <img loading="{% if loop.index0 < 4 %}eager{% else %}lazy{% endif %}"

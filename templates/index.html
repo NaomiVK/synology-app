@@ -1916,11 +1916,18 @@
           if (!enabled || target !== "folders") {
             folderThumbGrids[i].style.removeProperty("--folder-card-min");
             folderThumbGrids[i].style.removeProperty("--folder-card-max-height");
+            folderThumbGrids[i].style.removeProperty("--folder-cover-hover-scale");
+            folderThumbGrids[i].style.removeProperty("--folder-title-hover-scale");
             continue;
           }
           var config = getFolderDesktopSizeConfig();
+          var hoverGrowPx = Math.max(4, Math.min(7, config.minWidth * 0.023));
+          var hoverScale = 1 + ((hoverGrowPx * 2) / Math.max(1, config.minWidth));
+          var titleHoverScale = Math.max(1.13, Math.min(1.22, 1 + (hoverGrowPx * 0.022)));
           folderThumbGrids[i].style.setProperty("--folder-card-min", config.minWidth + "px");
           folderThumbGrids[i].style.setProperty("--folder-card-max-height", config.maxHeight + "px");
+          folderThumbGrids[i].style.setProperty("--folder-cover-hover-scale", hoverScale.toFixed(4));
+          folderThumbGrids[i].style.setProperty("--folder-title-hover-scale", titleHoverScale.toFixed(4));
         }
       }
 
