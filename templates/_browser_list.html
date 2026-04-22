@@ -41,8 +41,7 @@
                  data-folder-link="true"
                  data-nav-scope="gallery"
                  data-dir="{{ item.rel_path }}"
-                 {% if item.type == 'dir' %}data-dir-item="{{ item.rel_path }}"{% endif %}
-                 title="{{ item.name }}">
+                 {% if item.type == 'dir' %}data-dir-item="{{ item.rel_path }}"{% endif %}>
                 {% if item.type == 'dir' %}<span class="select-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>{% endif %}
                 <span class="folder-thumb-image{% if item.type in ['favorites', 'edits'] %} virtual-folder-thumb-image{% endif %}" aria-hidden="true">
                   {% if item.cover %}
@@ -140,8 +139,7 @@
                data-folder-link="true"
                data-nav-scope="gallery"
                data-dir="{{ item.rel_path }}"
-               {% if item.type == 'dir' %}data-dir-item="{{ item.rel_path }}"{% endif %}
-               title="{{ item.name }}">
+               {% if item.type == 'dir' %}data-dir-item="{{ item.rel_path }}"{% endif %}>
               {% if item.type == 'dir' %}<span class="select-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></span>{% endif %}
               <span class="folder-thumb-image{% if item.type in ['favorites', 'edits'] %} virtual-folder-thumb-image{% endif %}" aria-hidden="true">
                 {% if item.cover %}
