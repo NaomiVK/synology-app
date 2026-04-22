@@ -1587,15 +1587,52 @@ def build_favorites_folder_item():
         state = load_favorites_state()
     latest_mtime = 0
     count = 0
-    for item in state["entries"].values():
+    newest_cover = None
+    changed = False
+    for rel_path, item in list(state["entries"].items()):
+        try:
+            path = resolve_safe_path(rel_path)
+        except ValueError:
+            state["entries"].pop(rel_path, None)
+            changed = True
+            continue
+        if should_exclude_png_path(path) or not path.exists() or not path.is_file() or path.suffix.lower() != ".png":
+            state["entries"].pop(rel_path, None)
+            changed = True
+            continue
+        try:
+            st = path.stat()
+        except OSError:
+            state["entries"].pop(rel_path, None)
+            changed = True
+            continue
+        if int(item.get("mtime") or 0) != int(st.st_mtime) or int(item.get("size") or 0) != int(st.st_size):
+            state["entries"].pop(rel_path, None)
+            changed = True
+            continue
         count += 1
-        latest_mtime = max(latest_mtime, int(item.get("mtime") or 0))
+        item_mtime = int(st.st_mtime)
+        latest_mtime = max(latest_mtime, item_mtime)
+        cover_sort_key = (str(item.get("added_at") or ""), item_mtime, path.name.lower())
+        if newest_cover is None or cover_sort_key > newest_cover["sort_key"]:
+            newest_cover = {
+                "sort_key": cover_sort_key,
+                "cover": {
+                    "name": path.name,
+                    "rel_path": rel_path,
+                    "thumb_sig": build_thumb_signature(rel_path, st),
+                },
+            }
+    if changed:
+        with favorites_state_lock:
+            save_favorites_state(state)
     return {
         "type": "favorites",
         "name": "Favorites",
         "rel_path": FAVORITES_DIR_KEY,
         "mtime": latest_mtime,
         "count": count,
+        "cover": newest_cover["cover"] if newest_cover else None,
     }
 
 
@@ -1664,20 +1701,39 @@ def get_edits_listing(sort_key: str = "date", sort_dir: str = "desc"):
 def build_edits_folder_item():
     latest_mtime = 0
     count = 0
+    newest_cover = None
     for item in iter_current_edited_items():
         count += 1
         current_path = item.get("current_path")
+        current_mtime = 0
         try:
             if current_path is not None:
-                latest_mtime = max(latest_mtime, int(current_path.stat().st_mtime))
+                current_mtime = int(current_path.stat().st_mtime)
+                latest_mtime = max(latest_mtime, current_mtime)
         except OSError:
             pass
+        meta = item.get("meta") or {}
+        rel_path = item.get("rel_path") or ""
+        source_path = item.get("path")
+        st = item.get("stat")
+        if rel_path and source_path is not None and st is not None:
+            cover_sort_key = (str(meta.get("updated_at") or ""), current_mtime, source_path.name.lower())
+            if newest_cover is None or cover_sort_key > newest_cover["sort_key"]:
+                newest_cover = {
+                    "sort_key": cover_sort_key,
+                    "cover": {
+                        "name": source_path.name,
+                        "rel_path": rel_path,
+                        "thumb_sig": build_thumb_signature_from_current_edit(rel_path, st, current_edit=item),
+                    },
+                }
     return {
         "type": "edits",
         "name": "Edits",
         "rel_path": EDITS_DIR_KEY,
         "mtime": latest_mtime,
         "count": count,
+        "cover": newest_cover["cover"] if newest_cover else None,
     }
 
 
