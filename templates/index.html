@@ -298,7 +298,7 @@
                    aria-label="Full Thumbnail view"
                    href="{{ url_for('index', dir=current_dir_rel, view='thumbs-full', sort=sort_key, order=sort_dir) }}"><span class="view-icon" aria-hidden="true">▤</span></a>
               </div>
-              <label id="folder-size-control" class="folder-size-control" title="Folder thumbnail size">
+              <label id="folder-size-control" class="folder-size-control" title="Thumbnail size">
                 <span class="folder-size-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
                     <path d="M3.5 7.5h5.2l1.8 2h10v8.8a1.2 1.2 0 0 1-1.2 1.2H4.7a1.2 1.2 0 0 1-1.2-1.2z"></path>
@@ -310,7 +310,7 @@
                        min="0"
                        max="4"
                        step="1"
-                       aria-label="Folder thumbnail size">
+                       aria-label="Thumbnail size">
               </label>
               <button type="button" id="select-mode-toggle" class="select-mode-toggle" aria-label="Select files" title="Select files">
                 <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>
@@ -1992,6 +1992,7 @@
       var metadataViewStorageKey = "uiMetadataViewMode";
       var galleryDensityStorageKey = "uiGalleryDensityStep";
       var folderDesktopSizeStorageKey = "uiFolderDesktopSizeStep";
+      var galleryDesktopSizeStorageKey = "uiGalleryDesktopSizeStep";
       var folderBrowserPrefsStorageKey = "uiFolderBrowserPrefs";
       var galleryBrowserPrefsStorageKey = "uiGalleryBrowserPrefs";
       var accentFamilies = (themeConfig.families || []).slice();
@@ -2130,6 +2131,90 @@
 
       function getGalleryDensityColumns() {
         return clampGalleryDensityStep(getStoredGalleryDensityStep()) + 1;
+      }
+
+      function getFolderDensityColumns() {
+        return clampGalleryDensityStep(getStoredFolderDensityStep()) + 1;
+      }
+
+      function shouldUseDesktopThumbSizeControl() {
+        return viewMode === "thumbs-full" && !isGalleryDensityPinchViewport();
+      }
+
+      function getDesktopThumbSizeConfig(storedStep) {
+        var step = FOLDER_DESKTOP_SIZE_MAX_STEP - clampFolderDesktopSizeStep(storedStep);
+        var scale = 1 - (step * 0.13125);
+        return {
+          step: step,
+          minWidth: Math.round(220 * scale),
+          maxHeight: Math.round(380 * scale),
+          scale: scale
+        };
+      }
+
+      function getFolderDesktopSizeConfig() {
+        return getDesktopThumbSizeConfig(getStoredFolderDesktopSizeStep());
+      }
+
+      function getGalleryDesktopSizeConfig() {
+        return getDesktopThumbSizeConfig(getStoredGalleryDesktopSizeStep());
+      }
+
+      function hasDesktopGalleryThumbs() {
+        return !!(browserImageList && isFullThumbMode() && browserImageList.querySelector(".thumb-card"));
+      }
+
+      function getDesktopThumbSizeTarget() {
+        if (!shouldUseDesktopThumbSizeControl()) return null;
+        if (folderThumbGrids.length) return "folders";
+        if (hasDesktopGalleryThumbs()) return "gallery";
+        return null;
+      }
+
+      function getStoredActiveDesktopSizeStep() {
+        return getDesktopThumbSizeTarget() === "gallery"
+          ? getStoredGalleryDesktopSizeStep()
+          : getStoredFolderDesktopSizeStep();
+      }
+
+      function setStoredActiveDesktopSizeStep(step) {
+        return getDesktopThumbSizeTarget() === "gallery"
+          ? setStoredGalleryDesktopSizeStep(step)
+          : setStoredFolderDesktopSizeStep(step);
+      }
+
+      function applyFolderDesktopSizeState() {
+        folderThumbGrids = Array.prototype.slice.call(document.querySelectorAll(".folder-thumb-grid"));
+        var enabled = shouldUseDesktopThumbSizeControl();
+        var target = getDesktopThumbSizeTarget();
+        if (folderSizeControl) {
+          folderSizeControl.hidden = !target;
+          folderSizeControl.title = target === "gallery" ? "Gallery thumbnail size" : "Folder thumbnail size";
+        }
+        if (folderSizeSlider) {
+          folderSizeSlider.value = String(getStoredActiveDesktopSizeStep());
+          folderSizeSlider.setAttribute("aria-label", target === "gallery" ? "Gallery thumbnail size" : "Folder thumbnail size");
+          updateFolderSizeSliderVisual();
+        }
+        for (var i = 0; i < folderThumbGrids.length; i++) {
+          if (!enabled || target !== "folders") {
+            folderThumbGrids[i].style.removeProperty("--folder-card-min");
+            folderThumbGrids[i].style.removeProperty("--folder-card-max-height");
+            continue;
+          }
+          var config = getFolderDesktopSizeConfig();
+          folderThumbGrids[i].style.setProperty("--folder-card-min", config.minWidth + "px");
+          folderThumbGrids[i].style.setProperty("--folder-card-max-height", config.maxHeight + "px");
+        }
+      }
+
+      function updateFolderSizeSliderVisual() {
+        if (!folderSizeSlider) return;
+        var min = Number(folderSizeSlider.min || 0);
+        var max = Number(folderSizeSlider.max || FOLDER_DESKTOP_SIZE_MAX_STEP);
+        var value = Number(folderSizeSlider.value || max);
+        var pct = max > min ? ((value - min) / (max - min)) * 100 : 100;
+        folderSizeSlider.style.setProperty("--folder-size-slider-pct", pct + "%");
       }
 
       function shouldUseGalleryDensityPinch() {
@@ -4054,49 +4139,6 @@
         return next;
       }
 
-      function shouldUseDesktopFolderSizeControl() {
-        return viewMode === "thumbs-full" && !isGalleryDensityPinchViewport();
-      }
-
-      function getFolderDesktopSizeConfig() {
-        var step = FOLDER_DESKTOP_SIZE_MAX_STEP - getStoredFolderDesktopSizeStep();
-        var scale = 1 - (step * 0.13125);
-        return {
-          step: step,
-          minWidth: Math.round(220 * scale),
-          maxHeight: Math.round(380 * scale)
-        };
-      }
-
-      function updateFolderSizeSliderVisual() {
-        if (!folderSizeSlider) return;
-        var min = Number(folderSizeSlider.min || 0);
-        var max = Number(folderSizeSlider.max || FOLDER_DESKTOP_SIZE_MAX_STEP);
-        var value = Number(folderSizeSlider.value || max);
-        var pct = max > min ? ((value - min) / (max - min)) * 100 : 100;
-        folderSizeSlider.style.setProperty("--folder-size-slider-pct", pct + "%");
-      }
-
-      function applyFolderDesktopSizeState() {
-        var enabled = shouldUseDesktopFolderSizeControl();
-        if (folderSizeControl) folderSizeControl.hidden = !enabled;
-        if (folderSizeSlider) {
-          folderSizeSlider.value = String(getStoredFolderDesktopSizeStep());
-          updateFolderSizeSliderVisual();
-        }
-        folderThumbGrids = Array.prototype.slice.call(document.querySelectorAll(".folder-thumb-grid"));
-        for (var i = 0; i < folderThumbGrids.length; i++) {
-          if (!enabled) {
-            folderThumbGrids[i].style.removeProperty("--folder-card-min");
-            folderThumbGrids[i].style.removeProperty("--folder-card-max-height");
-            continue;
-          }
-          var config = getFolderDesktopSizeConfig();
-          folderThumbGrids[i].style.setProperty("--folder-card-min", config.minWidth + "px");
-          folderThumbGrids[i].style.setProperty("--folder-card-max-height", config.maxHeight + "px");
-        }
-      }
-
       function getStoredGalleryDensityStep() {
         try {
           return clampGalleryDensityStep(localStorage.getItem(galleryDensityStorageKey));
@@ -4209,6 +4251,25 @@
           sat: clampNumber(source.sat, 0, 100),
           val: clampNumber(source.val, 0, 100)
         };
+      }
+
+      function getStoredGalleryDesktopSizeStep() {
+        try {
+          var raw = localStorage.getItem(galleryDesktopSizeStorageKey);
+          return raw == null ? FOLDER_DESKTOP_SIZE_MAX_STEP : clampFolderDesktopSizeStep(raw);
+        } catch (_err) {
+          return FOLDER_DESKTOP_SIZE_MAX_STEP;
+        }
+      }
+
+      function setStoredGalleryDesktopSizeStep(step) {
+        var next = clampFolderDesktopSizeStep(step);
+        try {
+          localStorage.setItem(galleryDesktopSizeStorageKey, String(next));
+        } catch (_err) {
+          /* ignore */
+        }
+        return next;
       }
 
       function getDefaultCustomThemeState(paletteId) {
@@ -4847,47 +4908,6 @@
         });
       }
 
-      if (folderSizeSlider) {
-        folderSizeSlider.value = String(getStoredFolderDesktopSizeStep());
-        updateFolderSizeSliderVisual();
-        folderSizeSlider.addEventListener("input", function () {
-          updateFolderSizeSliderVisual();
-          setStoredFolderDesktopSizeStep(folderSizeSlider.value);
-          applyFolderDesktopSizeState();
-        });
-      }
-
-      var browserHeaderToolbar = document.querySelector(".browser-header-toolbar");
-      if (browserHeaderToolbar) {
-        browserHeaderToolbar.addEventListener("click", function (event) {
-          var link = event.target.closest("a[href]");
-          if (!link || isModifiedClick(event)) return;
-          try {
-            var control = link.getAttribute("data-browser-control") || "";
-            var value = link.getAttribute("data-browser-value") || "";
-            var nextUrl = new URL(control && value ? buildBrowserControlUrl(control, value) : link.href, window.location.href);
-            var nextPrefs = normalizeBrowserPrefs({
-              view: nextUrl.searchParams.get("view") || viewMode,
-              sort: nextUrl.searchParams.get("sort") || sortKey,
-              order: nextUrl.searchParams.get("order") || sortDir
-            });
-            persistCurrentBrowserPrefs(null, nextPrefs);
-            viewMode = nextPrefs.view;
-            sortKey = nextPrefs.sort;
-            sortDir = nextPrefs.order;
-            syncBrowserHeaderLinks();
-            event.preventDefault();
-            loadFolderViaAjax(nextUrl.pathname + "?" + nextUrl.searchParams.toString(), {
-              pushState: true,
-              fallbackToPage: true,
-              keepDetachedSelection: false
-            });
-          } catch (_err) {
-            /* ignore */
-          }
-        });
-      }
-
       if (accentPalette) {
         accentPalette.addEventListener("click", function (event) {
           var button = event.target.closest("[data-accent-id]");
@@ -4928,6 +4948,49 @@
             setGalleryMode(getDefaultGalleryMode());
           }
           updateThemeMenuUI();
+        });
+      }
+
+      var browserHeaderToolbar = document.querySelector(".browser-header-toolbar");
+      if (browserHeaderToolbar) {
+        browserHeaderToolbar.addEventListener("click", function (event) {
+          var link = event.target.closest("a[href]");
+          if (!link || isModifiedClick(event)) return;
+          try {
+            var control = link.getAttribute("data-browser-control") || "";
+            var value = link.getAttribute("data-browser-value") || "";
+            var nextUrl = new URL(control && value ? buildBrowserControlUrl(control, value) : link.href, window.location.href);
+            var nextPrefs = normalizeBrowserPrefs({
+              view: nextUrl.searchParams.get("view") || viewMode,
+              sort: nextUrl.searchParams.get("sort") || sortKey,
+              order: nextUrl.searchParams.get("order") || sortDir
+            });
+            persistCurrentBrowserPrefs(null, nextPrefs);
+            viewMode = nextPrefs.view;
+            sortKey = nextPrefs.sort;
+            sortDir = nextPrefs.order;
+            syncBrowserHeaderLinks();
+            event.preventDefault();
+            loadFolderViaAjax(nextUrl.pathname + "?" + nextUrl.searchParams.toString(), {
+              pushState: true,
+              fallbackToPage: true,
+              keepDetachedSelection: false
+            });
+          } catch (_err) {
+            /* ignore */
+          }
+        });
+      }
+
+      if (folderSizeSlider) {
+        folderSizeSlider.value = String(getStoredActiveDesktopSizeStep());
+        updateFolderSizeSliderVisual();
+        folderSizeSlider.addEventListener("input", function () {
+          updateFolderSizeSliderVisual();
+          setStoredActiveDesktopSizeStep(folderSizeSlider.value);
+          applyFolderDesktopSizeState();
+          refreshFullThumbLayout();
+          scheduleFullThumbRelayout(120);
         });
       }
 
@@ -6409,12 +6472,7 @@
           var referencePortraitAspect = 0.72;
           return Math.max(96, Math.min(340, budget / Math.max(1, columns * referencePortraitAspect)));
         }
-        var width = browserImageList.clientWidth || 0;
-        if (width >= 1400) return 220;
-        if (width >= 1100) return 200;
-        if (width >= 820) return 180;
-        if (width >= 560) return 160;
-        return 140;
+        return Math.max(96, getGalleryDesktopSizeConfig().maxHeight);
       }
 
       function getComputedGapPx(styles) {
