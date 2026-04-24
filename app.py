@@ -45,8 +45,17 @@ APP_TITLE = "Poopster PNG Metadata Viewer 💩"
 APP_TITLE_MOBILE = "Poopster Metadata Viewer 💩"
 BROWSE_ROOT = Path(os.getenv("BROWSE_ROOT", "/data/output")).resolve()
 SHOW_HIDDEN = os.getenv("SHOW_HIDDEN", "0") == "1"
-MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "6000"))
+MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "51200"))
 ALLOWED_UPLOAD_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+ME_FOLDER_NAME = "me"
+ME_JPG_SUBFOLDER_NAME = "jpg"
+ME_FOLDER_EXTRA_EXTENSIONS = {".jpg", ".jpeg", ".webp"}
+BROWSEABLE_IMAGE_MIMETYPES = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+}
 THUMB_CACHE_DIR = Path(os.getenv("THUMB_CACHE_DIR", "/tmp/thumbs")).resolve()
 THUMB_CACHE_MAX_AGE = int(os.getenv("THUMB_CACHE_MAX_AGE", str(60 * 60 * 24 * 30)))
 THUMB_SIZE_SQUARE = int(os.getenv("THUMB_SIZE_SQUARE", "320"))
@@ -2335,6 +2344,34 @@ def should_exclude_png_path(path: Path) -> bool:
     return False
 
 
+def is_in_me_folder(path: Path) -> bool:
+    # True if the path sits inside a "jpg" folder that is itself inside a "me" folder,
+    # so jpg/jpeg/webp can be browsed only under me/.../jpg/... . Case-insensitive.
+    try:
+        rel = path.resolve().relative_to(BROWSE_ROOT)
+    except (ValueError, OSError):
+        return False
+    parts = [part.lower() for part in rel.parts]
+    try:
+        me_index = parts.index(ME_FOLDER_NAME)
+    except ValueError:
+        return False
+    return any(part == ME_JPG_SUBFOLDER_NAME for part in parts[me_index + 1:])
+
+
+def is_browseable_image(path: Path) -> bool:
+    suffix = path.suffix.lower()
+    if suffix == ".png":
+        return True
+    if suffix in ME_FOLDER_EXTRA_EXTENSIONS and is_in_me_folder(path):
+        return True
+    return False
+
+
+def browseable_image_mimetype(path: Path) -> str:
+    return BROWSEABLE_IMAGE_MIMETYPES.get(path.suffix.lower(), "application/octet-stream")
+
+
 def should_skip_hidden_name(name: str) -> bool:
     return not SHOW_HIDDEN and isinstance(name, str) and name.startswith(".")
 
@@ -2356,6 +2393,15 @@ def directory_contains_browseable_png(dir_path: Path, cache: Optional[dict] = No
     if cached is not None:
         return cached
 
+    # The "me" tree is always visible (even when empty) so users can set up me/jpg/ before uploading.
+    try:
+        rel_parts = [part.lower() for part in resolved.relative_to(BROWSE_ROOT).parts]
+        if ME_FOLDER_NAME in rel_parts:
+            cache[resolved] = True
+            return True
+    except ValueError:
+        pass
+
     try:
         with os.scandir(resolved) as scan:
             subdirs = []
@@ -2364,7 +2410,8 @@ def directory_contains_browseable_png(dir_path: Path, cache: Optional[dict] = No
                 if should_skip_hidden_name(name):
                     continue
                 if entry.is_file(follow_symlinks=False):
-                    if name.lower().endswith(".png") and not should_exclude_png_path(Path(entry.path)):
+                    entry_path = Path(entry.path)
+                    if is_browseable_image(entry_path) and not should_exclude_png_path(entry_path):
                         cache[resolved] = True
                         return True
                     continue
@@ -4143,9 +4190,9 @@ def find_newest_direct_png_cover(dir_path: Path, dir_stat=None):
                     continue
                 if not entry.is_file(follow_symlinks=False):
                     continue
-                if not name.lower().endswith(".png"):
-                    continue
                 path = Path(entry.path)
+                if not is_browseable_image(path):
+                    continue
                 if should_exclude_png_path(path):
                     continue
                 try:
@@ -4233,7 +4280,7 @@ def list_directory(rel_dir: str, sort_key: str = "date", sort_dir: str = "desc",
             if is_dir and name.lower().endswith("_overlays"):
                 continue
             is_file = entry.is_file(follow_symlinks=False)
-            is_png = is_file and name.lower().endswith(".png") and not should_exclude_png_path(Path(entry.path))
+            is_png = is_file and is_browseable_image(Path(entry.path)) and not should_exclude_png_path(Path(entry.path))
             if is_dir and not directory_contains_browseable_png(Path(entry.path), visible_dir_cache):
                 continue
             if not (is_dir or is_png):
@@ -4941,8 +4988,20 @@ def api_metadata():
     if should_exclude_png_path(path):
         return {"error": "This PNG variant is hidden by filter rules"}, 404
 
-    if not path.is_file() or path.suffix.lower() != ".png":
-        return {"error": "Not a valid PNG file"}, 400
+    if not path.is_file() or not is_browseable_image(path):
+        return {"error": "Not a valid image file"}, 400
+
+    if path.suffix.lower() != ".png":
+        # jpg/webp in the 'me' folder carry no ComfyUI metadata; synthesize the minimal parsed shape the builder needs.
+        try:
+            st = path.stat()
+            with Image.open(path) as img:
+                width, height = img.size
+        except Exception as exc:
+            log_event("metadata_parse_failure", "Image open failed", file=rel_file, error=str(exc))
+            return {"error": f"Failed to open image: {exc}"}, 500
+        parsed_stub = {"image": {"width": width, "height": height, "size_bytes": st.st_size}}
+        return build_metadata_response(path, parsed_stub, st)
 
     try:
         parsed, _st = get_cached_parsed_metadata(path)
@@ -4967,8 +5026,11 @@ def api_metadata_raw():
     if should_exclude_png_path(path):
         return {"error": "This PNG variant is hidden by filter rules"}, 404
 
-    if not path.is_file() or path.suffix.lower() != ".png":
-        return {"error": "Not a valid PNG file"}, 400
+    if not path.is_file() or not is_browseable_image(path):
+        return {"error": "Not a valid image file"}, 400
+
+    if path.suffix.lower() != ".png":
+        return build_raw_metadata_response({})
 
     try:
         parsed, _st = get_cached_parsed_metadata(path)
@@ -5305,14 +5367,16 @@ def image_preview():
     if should_exclude_png_path(path):
         abort(404)
 
-    if not path.exists() or not path.is_file() or path.suffix.lower() != ".png":
+    if not path.exists() or not path.is_file() or not is_browseable_image(path):
         abort(404)
     try:
         st = path.stat()
         effective_path = get_effective_image_path_for_variant(rel_file, path, st=st, variant=variant)
     except OSError:
         abort(404)
-    return send_file(effective_path, mimetype="image/png", conditional=True)
+    # Edits always produce a PNG; only the untouched original keeps the source mimetype.
+    mimetype = "image/png" if effective_path != path else browseable_image_mimetype(path)
+    return send_file(effective_path, mimetype=mimetype, conditional=True)
 
 
 @app.route("/thumb")
@@ -5329,7 +5393,7 @@ def image_thumbnail():
     if should_exclude_png_path(path):
         abort(404)
 
-    if not path.exists() or not path.is_file() or path.suffix.lower() != ".png":
+    if not path.exists() or not path.is_file() or not is_browseable_image(path):
         abort(404)
     if mode not in {"square", "full", "preview"}:
         abort(400)
@@ -5360,7 +5424,7 @@ def download_original():
     if should_exclude_png_path(path):
         abort(404)
 
-    if not path.exists() or not path.is_file() or path.suffix.lower() != ".png":
+    if not path.exists() or not path.is_file() or not is_browseable_image(path):
         abort(404)
 
     if variant == "edited":
@@ -5370,7 +5434,7 @@ def download_original():
         download_name = f"{path.stem}_edited.png"
         return send_file(effective, mimetype="image/png", as_attachment=True, download_name=download_name)
 
-    return send_file(path, mimetype="image/png", as_attachment=True, download_name=path.name)
+    return send_file(path, mimetype=browseable_image_mimetype(path), as_attachment=True, download_name=path.name)
 
 
 @app.route("/api/upload", methods=["POST"])
