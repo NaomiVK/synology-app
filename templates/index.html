@@ -1961,6 +1961,12 @@
       var longPressActiveLink = null;
       var galleryPinchActive = false;
       var galleryPinchStartDistance = 0;
+      var folderDensitySwipeActive = false;
+      var folderDensitySwipeStartX = 0;
+      var folderDensitySwipeStartY = 0;
+      var folderDensitySwipeLastX = 0;
+      var folderDensitySwipeLastY = 0;
+      var galleryPinchTarget = "gallery";
       var metadataCardsTouchStartX = 0;
       var metadataCardsTouchStartY = 0;
       var metadataCardsTouchActive = false;
@@ -1977,6 +1983,8 @@
       var FOLDER_DESKTOP_SIZE_MIN_STEP = 0;
       var FOLDER_DESKTOP_SIZE_MAX_STEP = 4;
       var GALLERY_PINCH_SCALE_THRESHOLD = 0.16;
+      var FOLDER_DENSITY_SWIPE_THRESHOLD_PX = 52;
+      var FOLDER_DENSITY_SWIPE_VERTICAL_LIMIT_PX = 34;
       var METADATA_CARDS_WHEEL_THRESHOLD = 72;
       var METADATA_CARDS_WHEEL_COOLDOWN_MS = 420;
 
@@ -1991,10 +1999,13 @@
       var layoutStorageKey = "uiLayoutMode";
       var metadataViewStorageKey = "uiMetadataViewMode";
       var galleryDensityStorageKey = "uiGalleryDensityStep";
-      var folderDesktopSizeStorageKey = "uiFolderDesktopSizeStep";
-      var galleryDesktopSizeStorageKey = "uiGalleryDesktopSizeStep";
+      var folderDensityStorageKey = "uiFolderDensityStep";
+      var desktopThumbSizeStorageKey = "uiDesktopThumbSizeStep";
+      var folderDesktopSizeStorageKey = desktopThumbSizeStorageKey;
+      var galleryDesktopSizeStorageKey = desktopThumbSizeStorageKey;
       var folderBrowserPrefsStorageKey = "uiFolderBrowserPrefs";
       var galleryBrowserPrefsStorageKey = "uiGalleryBrowserPrefs";
+      var perFolderBrowserPrefsStorageKey = "uiPerFolderBrowserPrefs";
       var accentFamilies = (themeConfig.families || []).slice();
       var accentPresets = (themeConfig.presets || []).slice();
       var defaultAccentByTheme = themeConfig.defaults || {};
@@ -2050,6 +2061,45 @@
         return normalized;
       }
 
+      function readPerFolderPrefsMap() {
+        try {
+          var raw = localStorage.getItem(perFolderBrowserPrefsStorageKey);
+          var parsed = raw ? JSON.parse(raw) : null;
+          return parsed && typeof parsed === "object" ? parsed : {};
+        } catch (_err) {
+          return {};
+        }
+      }
+
+      function writePerFolderPrefsMap(map) {
+        try {
+          localStorage.setItem(perFolderBrowserPrefsStorageKey, JSON.stringify(map || {}));
+        } catch (_err) {
+          /* ignore */
+        }
+      }
+
+      function readPerFolderPrefs(dir) {
+        var key = normalizeDirKey(dir);
+        var entry = readPerFolderPrefsMap()[key];
+        if (!entry || typeof entry !== "object") return null;
+        var sort = (entry.sort === "name" || entry.sort === "date") ? entry.sort : null;
+        var order = (entry.order === "asc" || entry.order === "desc") ? entry.order : null;
+        if (!sort || !order) return null;
+        return { sort: sort, order: order };
+      }
+
+      function writePerFolderPrefs(dir, prefs) {
+        if (!prefs) return;
+        var sort = (prefs.sort === "name" || prefs.sort === "date") ? prefs.sort : null;
+        var order = (prefs.order === "asc" || prefs.order === "desc") ? prefs.order : null;
+        if (!sort || !order) return;
+        var key = normalizeDirKey(dir);
+        var map = readPerFolderPrefsMap();
+        map[key] = { sort: sort, order: order };
+        writePerFolderPrefsMap(map);
+      }
+
       function getBrowserContentScope() {
         var livePngCount = browserImageList ? browserImageList.querySelectorAll("[data-file]").length : pngCount;
         return livePngCount > 0 ? "gallery" : "folders";
@@ -2058,17 +2108,23 @@
       function persistCurrentBrowserPrefs(scopeOverride, prefsOverride) {
         var scope = scopeOverride === "gallery" || scopeOverride === "folders" ? scopeOverride : getBrowserContentScope();
         var prefs = prefsOverride || { view: viewMode, sort: sortKey, order: sortDir };
+        writePerFolderPrefs(dirKey, prefs);
         return writeBrowserPrefs(scope, prefs);
       }
 
       function buildScopedBrowserUrl(urlLike, scope) {
         var source = new URL(urlLike, window.location.href);
         var nextScope = scope === "folders" ? "folders" : "gallery";
-        var prefs = readBrowserPrefs(nextScope);
+        var scopePrefs = readBrowserPrefs(nextScope);
+        var scopeDefault = getDefaultBrowserPrefs(nextScope);
         if (!source.searchParams.has("dir")) source.searchParams.set("dir", "");
-        source.searchParams.set("view", prefs.view);
-        source.searchParams.set("sort", prefs.sort);
-        source.searchParams.set("order", prefs.order);
+        var targetDir = normalizeDirKey(source.searchParams.get("dir") || "");
+        var perFolder = readPerFolderPrefs(targetDir);
+        var sort = perFolder ? perFolder.sort : scopeDefault.sort;
+        var order = perFolder ? perFolder.order : scopeDefault.order;
+        source.searchParams.set("view", scopePrefs.view);
+        source.searchParams.set("sort", sort);
+        source.searchParams.set("order", order);
         source.searchParams.delete("file");
         return source.pathname + "?" + source.searchParams.toString();
       }
@@ -2225,25 +2281,39 @@
       }
 
       function shouldUseGalleryDensityPinch() {
-        return !!(browserImageList &&
+        return !!((browserImageList || (folderThumbGrids && folderThumbGrids.length)) &&
           viewMode !== "list" &&
           !lightboxOpen &&
           isGalleryDensityPinchViewport());
       }
 
       function applyGalleryDensityState() {
-        if (!browserImageList) {
-          applyFolderDesktopSizeState();
-          return;
-        }
+        folderThumbGrids = Array.prototype.slice.call(document.querySelectorAll(".folder-thumb-grid"));
         if (!shouldUseGalleryDensityPinch()) {
-          browserImageList.removeAttribute("data-gallery-density");
-          browserImageList.style.gridTemplateColumns = "";
+          if (browserImageList) {
+            browserImageList.removeAttribute("data-gallery-density");
+            browserImageList.style.gridTemplateColumns = "";
+          }
+          for (var clearIdx = 0; clearIdx < folderThumbGrids.length; clearIdx++) {
+            folderThumbGrids[clearIdx].removeAttribute("data-gallery-density");
+            folderThumbGrids[clearIdx].style.gridTemplateColumns = "";
+          }
           applyFolderDesktopSizeState();
           return;
         }
         var columns = getGalleryDensityColumns();
-        browserImageList.setAttribute("data-gallery-density", String(columns));
+        var folderColumns = getFolderDensityColumns();
+        if (browserImageList) {
+          browserImageList.setAttribute("data-gallery-density", String(columns));
+        }
+        for (var gridIdx = 0; gridIdx < folderThumbGrids.length; gridIdx++) {
+          folderThumbGrids[gridIdx].setAttribute("data-gallery-density", String(folderColumns));
+          folderThumbGrids[gridIdx].style.gridTemplateColumns = "repeat(" + folderColumns + ", minmax(0, 1fr))";
+        }
+        if (!browserImageList) {
+          applyFolderDesktopSizeState();
+          return;
+        }
         if (isFullThumbMode()) {
           browserImageList.style.gridTemplateColumns = "";
           applyFolderDesktopSizeState();
@@ -2261,6 +2331,15 @@
         applyGalleryDensityState();
         refreshFullThumbLayout();
         scheduleFullThumbRelayout(120);
+        return true;
+      }
+
+      function updateFolderDensity(step) {
+        var next = clampGalleryDensityStep(step);
+        var current = getStoredFolderDensityStep();
+        if (next === current) return false;
+        setStoredFolderDensityStep(next);
+        applyGalleryDensityState();
         return true;
       }
 
@@ -3272,6 +3351,7 @@
         viewMode = data.view_mode || viewMode;
         sortKey = data.sort_key || sortKey;
         sortDir = data.sort_dir || sortDir;
+        writePerFolderPrefs(dirKey, { sort: sortKey, order: sortDir });
         syncBrowserDomRefs();
         refreshInitialGalleryState();
         resetGallerySearchState();
@@ -4158,6 +4238,24 @@
         var next = clampGalleryDensityStep(step);
         try {
           localStorage.setItem(galleryDensityStorageKey, String(next));
+        } catch (_err) {
+          /* ignore */
+        }
+        return next;
+      }
+
+      function getStoredFolderDensityStep() {
+        try {
+          return clampGalleryDensityStep(localStorage.getItem(folderDensityStorageKey));
+        } catch (_err) {
+          return GALLERY_DENSITY_MAX_STEP;
+        }
+      }
+
+      function setStoredFolderDensityStep(step) {
+        var next = clampGalleryDensityStep(step);
+        try {
+          localStorage.setItem(folderDensityStorageKey, String(next));
         } catch (_err) {
           /* ignore */
         }
@@ -13757,6 +13855,17 @@
         }, { passive: true });
 
         browserList.addEventListener("touchstart", function (event) {
+          var folderGrid = event.target && event.target.closest ? event.target.closest(".folder-thumb-grid") : null;
+          if (folderGrid && shouldUseGalleryDensityPinch() && event.touches && event.touches.length === 1) {
+            folderDensitySwipeActive = true;
+            folderDensitySwipeStartX = event.touches[0].clientX;
+            folderDensitySwipeStartY = event.touches[0].clientY;
+            folderDensitySwipeLastX = folderDensitySwipeStartX;
+            folderDensitySwipeLastY = folderDensitySwipeStartY;
+          } else {
+            folderDensitySwipeActive = false;
+          }
+
           if (!shouldUseGalleryDensityPinch() || !event.touches || event.touches.length !== 2) {
             galleryPinchActive = false;
             return;
@@ -13764,10 +13873,16 @@
           cancelGalleryLongPress();
           galleryPinchActive = true;
           galleryPinchStartDistance = getTouchDistance(event.touches[0], event.touches[1]);
+          galleryPinchTarget = folderGrid ? "folders" : "gallery";
           event.preventDefault();
         }, { passive: false });
 
         browserList.addEventListener("touchmove", function (event) {
+          if (folderDensitySwipeActive && event.touches && event.touches.length === 1) {
+            folderDensitySwipeLastX = event.touches[0].clientX;
+            folderDensitySwipeLastY = event.touches[0].clientY;
+          }
+
           if (!longPressTimer) return;
           var touch = getTouchById(event.touches, longPressTouchId);
           if (!touch) {
@@ -13795,7 +13910,9 @@
             return;
           }
           var direction = scale > 1 ? -1 : 1;
-          var didChange = updateGalleryDensity(getStoredGalleryDensityStep() + direction);
+          var didChange = galleryPinchTarget === "folders"
+            ? updateFolderDensity(getStoredFolderDensityStep() + direction)
+            : updateGalleryDensity(getStoredGalleryDensityStep() + direction);
           if (didChange) {
             galleryPinchStartDistance = currentDistance;
           }
@@ -13807,9 +13924,25 @@
         }, { passive: true });
 
         browserList.addEventListener("touchend", function (event) {
+          if (!folderDensitySwipeActive) return;
+          folderDensitySwipeActive = false;
+          var dx = folderDensitySwipeLastX - folderDensitySwipeStartX;
+          var dy = folderDensitySwipeLastY - folderDensitySwipeStartY;
+          if (Math.abs(dx) < FOLDER_DENSITY_SWIPE_THRESHOLD_PX || Math.abs(dy) > FOLDER_DENSITY_SWIPE_VERTICAL_LIMIT_PX) {
+            return;
+          }
+          var direction = dx < 0 ? 1 : -1;
+          if (updateFolderDensity(getStoredFolderDensityStep() + direction) && event && typeof event.preventDefault === "function") {
+            suppressNextGalleryClick = true;
+            event.preventDefault();
+          }
+        }, { passive: false });
+
+        browserList.addEventListener("touchend", function (event) {
           if (!event.touches || event.touches.length < 2) {
             galleryPinchActive = false;
             galleryPinchStartDistance = 0;
+            galleryPinchTarget = "gallery";
           }
         }, { passive: true });
 
@@ -13820,6 +13953,7 @@
         browserList.addEventListener("touchcancel", function () {
           galleryPinchActive = false;
           galleryPinchStartDistance = 0;
+          galleryPinchTarget = "gallery";
         }, { passive: true });
 
         browserList.addEventListener("contextmenu", function (event) {
@@ -14094,6 +14228,7 @@
 
       var urlParams = new URLSearchParams(window.location.search);
       var initialFile = urlParams.get("file");
+      writePerFolderPrefs(dirKey, { sort: sortKey, order: sortDir });
       syncBrowserDomRefs();
       refreshInitialGalleryState();
       syncFolderScopedUi();
